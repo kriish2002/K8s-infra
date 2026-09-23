@@ -1,0 +1,12 @@
+@"
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+.env
+.vscode/
+.idea/
+"@ | Out-File -Encoding utf8 .gitignore
