@@ -9,4 +9,7 @@ crash.*.log
 .env
 .vscode/
 .idea/
+
+these are the files or the nodes which will not be tracked by git and will be ignored by git when we push the code to the remote repository.
+
 "@ | Out-File -Encoding utf8 .gitignore
