@@ -17,9 +17,9 @@ pool:
 
 stages:
 
-# =========================
-# BUILD AND PUSH IMAGE
-# =========================
+# ==========================================
+# STAGE 1: BUILD AND PUSH DOCKER IMAGE
+# ==========================================
 - stage: Build
   displayName: 'Build and Push Docker Image'
 
@@ -32,25 +32,48 @@ stages:
     - checkout: self
 
     - task: AzureCLI@2
+      displayName: 'Login to Azure'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'ps'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          Write-Host "Logging in to Azure..."
+          az account show
+
+    - task: AzureCLI@2
       displayName: 'Build and Push Docker Image'
       inputs:
         azureSubscription: '$(azureServiceConnection)'
         scriptType: 'ps'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          az acr build `
-            --registry $(acrName) `
-            --image $(imageRepository):$(imageTag) `
-            --file app/Dockerfile `
+
+          Write-Host "Logging in to ACR..."
+
+          az acr login --name $(acrName)
+
+          Write-Host "Building Docker image..."
+
+          docker build `
+            -t $(acrName).azurecr.io/$(imageRepository):$(imageTag) `
+            -f app/Dockerfile `
             app/
 
+          Write-Host "Pushing Docker image to ACR..."
 
-# =========================
-# DEPLOY TO AKS
-# =========================
+          docker push $(acrName).azurecr.io/$(imageRepository):$(imageTag)
+
+          Write-Host "Docker image pushed successfully."
+
+# ==========================================
+# STAGE 2: DEPLOY TO AKS
+# ==========================================
 - stage: Deploy
   displayName: 'Deploy to AKS'
+
   dependsOn: Build
+
   condition: succeeded()
 
   jobs:
@@ -62,30 +85,50 @@ stages:
     - checkout: self
 
     - task: AzureCLI@2
-      displayName: 'Deploy to AKS'
+      displayName: 'Deploy Application to AKS'
       inputs:
         azureSubscription: '$(azureServiceConnection)'
         scriptType: 'ps'
         scriptLocation: 'inlineScript'
         inlineScript: |
 
+          Write-Host "Getting AKS credentials..."
+
           az aks get-credentials `
             --resource-group $(resourceGroup) `
             --name $(aksCluster) `
             --overwrite-existing
 
+          Write-Host "Applying Kubernetes Namespace..."
+
           kubectl apply -f namespace.yaml
+
+          Write-Host "Applying Deployment..."
 
           kubectl apply -f deployment.yaml
 
+          Write-Host "Applying Service..."
+
           kubectl apply -f services.yaml
+
+          Write-Host "Updating Docker image..."
 
           kubectl set image deployment/flask-app `
             flask-app=$(acrName).azurecr.io/$(imageRepository):$(imageTag) `
             -n $(namespace)
 
-          kubectl rollout status deployment/flask-app -n $(namespace)
+          Write-Host "Waiting for rollout..."
+
+          kubectl rollout status deployment/flask-app `
+            -n $(namespace) `
+            --timeout=5m
+
+          Write-Host "Checking Pods..."
 
           kubectl get pods -n $(namespace)
 
+          Write-Host "Checking Service..."
+
           kubectl get svc -n $(namespace)
+
+          Write-Host "Deployment completed successfully."
