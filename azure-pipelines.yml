@@ -38,7 +38,7 @@ stages:
         scriptType: 'ps'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          Write-Host "Logging in to Azure..."
+          Write-Host "Azure login successful"
           az account show
 
     - task: AzureCLI@2
@@ -48,6 +48,18 @@ stages:
         scriptType: 'ps'
         scriptLocation: 'inlineScript'
         inlineScript: |
+
+          Write-Host "Adding Docker to PATH..."
+
+          $env:Path += ";C:\Users\happi\AppData\Local\Programs\DockerDesktop\resources\bin"
+
+          Write-Host "Checking Docker..."
+
+          docker --version
+
+          Write-Host "Checking Docker Engine..."
+
+          docker version
 
           Write-Host "Logging in to ACR..."
 
@@ -65,6 +77,7 @@ stages:
           docker push $(acrName).azurecr.io/$(imageRepository):$(imageTag)
 
           Write-Host "Docker image pushed successfully."
+
 
 # ==========================================
 # STAGE 2: DEPLOY TO AKS
@@ -99,36 +112,36 @@ stages:
             --name $(aksCluster) `
             --overwrite-existing
 
-          Write-Host "Applying Kubernetes Namespace..."
+          Write-Host "Applying namespace..."
 
           kubectl apply -f namespace.yaml
 
-          Write-Host "Applying Deployment..."
+          Write-Host "Applying deployment..."
 
           kubectl apply -f deployment.yaml
 
-          Write-Host "Applying Service..."
+          Write-Host "Applying service..."
 
           kubectl apply -f services.yaml
 
-          Write-Host "Updating Docker image..."
+          Write-Host "Updating application image..."
 
           kubectl set image deployment/flask-app `
             flask-app=$(acrName).azurecr.io/$(imageRepository):$(imageTag) `
             -n $(namespace)
 
-          Write-Host "Waiting for rollout..."
+          Write-Host "Waiting for deployment rollout..."
 
           kubectl rollout status deployment/flask-app `
             -n $(namespace) `
             --timeout=5m
 
-          Write-Host "Checking Pods..."
+          Write-Host "Checking pods..."
 
           kubectl get pods -n $(namespace)
 
-          Write-Host "Checking Service..."
+          Write-Host "Checking service..."
 
           kubectl get svc -n $(namespace)
 
-          Write-Host "Deployment completed successfully."
+          Write-Host "AKS deployment completed successfully."
