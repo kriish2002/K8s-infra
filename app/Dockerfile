@@ -1,9 +1,13 @@
-FROM eclipse-temurin:17-jdk-alpine
+FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY Main.java .
+COPY requirements.txt .
 
-RUN javac Main.java
+RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["java", "Main"]
+COPY app.py .
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]
