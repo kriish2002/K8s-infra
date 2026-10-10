@@ -3,3 +3,8 @@ kind: Namespace
 metadata:
   name: flask-app
   
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nginx
