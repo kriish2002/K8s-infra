@@ -124,6 +124,10 @@ stages:
 
           kubectl apply -f services.yaml
 
+          Write-Host "Applying ingress..."
+
+          kubectl apply -f ingress.yaml
+
           Write-Host "Updating application image..."
 
           kubectl set image deployment/flask-app `
@@ -143,5 +147,9 @@ stages:
           Write-Host "Checking service..."
 
           kubectl get svc -n $(namespace)
+
+          Write-Host "Checking ingress..."
+
+          kubectl get ingress -n $(namespace)
 
           Write-Host "AKS deployment completed successfully."
